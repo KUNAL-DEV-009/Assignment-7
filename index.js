@@ -356,6 +356,24 @@ app.post('/todos/reorder', async (req, res) => {
   }
 });
 
+// Download Assignment-7.zip
+app.get('/download/assignment-7.zip', (req, res) => {
+  try {
+    const zipPath = path.join(__dirname, 'Assignment-7.zip');
+    res.download(zipPath, 'Assignment-7.zip', (err) => {
+      if (err) {
+        console.error('Error downloading zip file:', err);
+        if (!res.headersSent) {
+          res.status(404).send('File not found');
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error serving zip file:', error);
+    res.status(500).send('Internal server error');
+  }
+});
+
 // 404 handler for API routes - must come AFTER all routes
 app.use('/todos', (req, res) => {
   res.status(404).json({ error: 'Route not found', path: req.path });
