@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="A modern, responsive Todo List application to help you stay organized and boost productivity. Manage your tasks with priority levels and filters.">
+    <meta name="keywords" content="todo list, task manager, productivity, organizer, tasks">
+    <meta name="author" content="Todo List App">
+    <title>Todo List App - Stay Organized & Boost Productivity</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Header -->
+    <header role="banner">
+        <div class="container">
+            <h1>
+                <span class="header-icon sparkle">✨</span>
+                <span class="header-title">My Todo List</span>
+                <span class="header-icon sparkle">✨</span>
+            </h1>
+            <p class="subtitle">Stay organized and boost your productivity</p>
+            <div class="header-stats">
+                <div class="stat-item">
+                    <span class="stat-number" id="totalTasks"><%= typeof allTodos !== 'undefined' ? allTodos.length : 0 %></span>
+                    <span class="stat-label">Total Tasks</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number" id="completedTasks"><%= typeof completedCount !== 'undefined' ? completedCount : 0 %></span>
+                    <span class="stat-label">Completed</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number" id="pendingTasks"><%= typeof pendingCount !== 'undefined' ? pendingCount : 0 %></span>
+                    <span class="stat-label">Pending</span>
+                </div>
+                <% if (typeof allTodos !== 'undefined' && allTodos.length > 0) { %>
+                    <div class="stat-item stat-item-progress">
+                        <span class="stat-number" id="completionPercentage">
+                            <%= Math.round((completedCount / allTodos.length) * 100) %>%
+                        </span>
+                        <span class="stat-label">Complete</span>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: <%= Math.round((completedCount / allTodos.length) * 100) %>%"></div>
+                        </div>
+                    </div>
+                <% } %>
+            </div>
+            <div class="header-actions">
+                <button type="button" id="refreshBtn" class="btn btn-refresh" aria-label="Refresh page" onclick="refreshPage()">
+                    <span class="btn-icon">🔄</span>
+                    <span class="btn-text">Refresh</span>
+                </button>
+                <button type="button" id="exportBtn" class="btn btn-export" aria-label="Export todos">
+                    <span class="btn-icon">📥</span>
+                    <span class="btn-text">Export</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container" role="main">
+        <!-- Success Message -->
+        <% if (typeof success !== 'undefined' && success === 'added') { %>
+            <div class="alert alert-success" role="alert" style="display: block;">
+                <span class="alert-icon">✓</span>
+                <span class="alert-text">Task added successfully!</span>
+            </div>
+        <% } %>
+
+        <!-- Todo Creation Box -->
+        <section class="todo-creator" aria-label="Create new task">
+            <div class="todo-creator-gradient"></div>
+            <div class="section-header">
+                <h2>
+                    <span class="section-icon animate-bounce">➕</span>
+                    Add New Task
+                    <span class="section-badge">Quick Add</span>
+                </h2>
+            </div>
+            <form id="todoForm" action="/todos" method="POST" novalidate>
+                <div class="input-group">
+                    <div class="input-wrapper">
+                        <input 
+                            type="text" 
+                            id="taskInput" 
+                            name="task" 
+                            placeholder="Enter your task here (max 200 characters)..." 
+                            maxlength="200"
+                            aria-label="Task input"
+                            aria-required="true"
+                            aria-describedby="charCount"
+                            required
+                            autocomplete="off"
+                        >
+                        <span class="char-count" id="charCount" role="status" aria-live="polite">0/200</span>
+                    </div>
+                    <div class="select-wrapper">
+                        <select 
+                            name="priority" 
+                            id="prioritySelect" 
+                            aria-label="Task priority"
+                            required
+                        >
+                            <option value="low">🔵 Low Priority</option>
+                            <option value="medium" selected>🟡 Medium Priority</option>
+                            <option value="high">🔴 High Priority</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="addBtn" aria-label="Add new task">
+                        <span class="btn-icon">➕</span>
+                        <span class="btn-text">Add Task</span>
+                        <span class="btn-loader" style="display: none;" aria-hidden="true">⏳</span>
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <!-- Search Section -->
+        <section class="search-section" aria-label="Search tasks">
+            <div class="section-header">
+                <h2>
+                    <span class="section-icon">🔎</span>
+                    Search Tasks
+                </h2>
+            </div>
+            <div class="search-wrapper">
+                <input 
+                    type="text" 
+                    id="searchInput" 
+                    placeholder="Search tasks by name..." 
+                    aria-label="Search tasks"
+                    autocomplete="off"
+                    class="search-input"
+                >
+                <button type="button" id="clearSearch" class="btn-clear-search" aria-label="Clear search" style="display: none;">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Sort Section -->
+        <section class="sort-section" aria-label="Sort tasks">
+            <div class="sort-wrapper">
+                <label for="sortSelect" class="sort-label">
+                    <span class="sort-icon">📊</span>
+                    Sort by:
+                </label>
+                <select id="sortSelect" class="sort-select" aria-label="Sort options">
+                    <option value="date-desc" <%= typeof sortBy !== 'undefined' && sortBy === 'date-desc' ? 'selected' : '' %>>Newest First</option>
+                    <option value="date-asc" <%= typeof sortBy !== 'undefined' && sortBy === 'date-asc' ? 'selected' : '' %>>Oldest First</option>
+                    <option value="priority" <%= typeof sortBy !== 'undefined' && sortBy === 'priority' ? 'selected' : '' %>>Priority (High to Low)</option>
+                    <option value="name" <%= typeof sortBy !== 'undefined' && sortBy === 'name' ? 'selected' : '' %>>Name (A to Z)</option>
+                </select>
+            </div>
+        </section>
+
+        <!-- Filter Section -->
+        <section class="filter-section" aria-label="Filter tasks by priority and status">
+            <div class="section-header">
+                <h2>
+                    <span class="section-icon rotate">🔍</span>
+                    Filter Tasks
+                    <span class="filter-indicator">
+                        <span class="indicator-dot active-dot"></span>
+                        <span class="indicator-text">Active Filter</span>
+                    </span>
+                </h2>
+            </div>
+            <div class="filter-group">
+                <div class="filter-subsection">
+                    <h3 class="filter-subtitle">By Status</h3>
+                    <div class="filter-buttons" role="group" aria-label="Status filter options">
+                        <a href="?status=all<%= filter !== 'all' ? '&filter=' + filter : '' %><%= typeof sortBy !== 'undefined' ? '&sort=' + sortBy : '' %>" class="filter-btn <%= (typeof statusFilter === 'undefined' || statusFilter === 'all') ? 'active' : '' %>" aria-pressed="<%= (typeof statusFilter === 'undefined' || statusFilter === 'all') ? 'true' : 'false' %>">
+                            <span class="filter-icon">📋</span>
+                            <span>All Tasks</span>
+                            <% if (typeof allTodos !== 'undefined') { %>
+                                <span class="filter-count">(<%= allTodos.length %>)</span>
+                            <% } %>
+                        </a>
+                        <a href="?status=pending<%= filter !== 'all' ? '&filter=' + filter : '' %><%= typeof sortBy !== 'undefined' ? '&sort=' + sortBy : '' %>" class="filter-btn <%= statusFilter === 'pending' ? 'active' : '' %>" aria-pressed="<%= statusFilter === 'pending' ? 'true' : 'false' %>">
+                            <span class="filter-icon">⏳</span>
+                            <span>Pending</span>
+                            <% if (typeof pendingCount !== 'undefined') { %>
+                                <span class="filter-count">(<%= pendingCount %>)</span>
+                            <% } %>
+                        </a>
+                        <a href="?status=completed<%= filter !== 'all' ? '&filter=' + filter : '' %><%= typeof sortBy !== 'undefined' ? '&sort=' + sortBy : '' %>" class="filter-btn <%= statusFilter === 'completed' ? 'active' : '' %>" aria-pressed="<%= statusFilter === 'completed' ? 'true' : 'false' %>">
+                            <span class="filter-icon">✅</span>
+                            <span>Completed</span>
+                            <% if (typeof completedCount !== 'undefined') { %>
+                                <span class="filter-count">(<%= completedCount %>)</span>
+                            <% } %>
+                        </a>
+                    </div>
+                </div>
+                <div class="filter-subsection">
+                    <h3 class="filter-subtitle">By Priority</h3>
+                    <div class="filter-buttons" role="group" aria-label="Priority filter options">
+                        <a href="?filter=all<%= statusFilter !== 'all' ? '&status=' + statusFilter : '' %><%= typeof sortBy !== 'undefined' ? '&sort=' + sortBy : '' %>" class="filter-btn <%= filter === 'all' ? 'active' : '' %>" aria-pressed="<%= filter === 'all' ? 'true' : 'false' %>">
+                            <span class="filter-icon">🎯</span>
+                            <span>All Priorities</span>
+                        </a>
+                        <a href="?filter=high<%= statusFilter !== 'all' ? '&status=' + statusFilter : '' %><%= typeof sortBy !== 'undefined' ? '&sort=' + sortBy : '' %>" class="filter-btn <%= filter === 'high' ? 'active' : '' %>" aria-pressed="<%= filter === 'high' ? 'true' : 'false' %>">
+                            <span class="filter-icon">🔴</span>
+                            <span>High</span>
+                        </a>
+                        <a href="?filter=medium<%= statusFilter !== 'all' ? '&status=' + statusFilter : '' %><%= typeof sortBy !== 'undefined' ? '&sort=' + sortBy : '' %>" class="filter-btn <%= filter === 'medium' ? 'active' : '' %>" aria-pressed="<%= filter === 'medium' ? 'true' : 'false' %>">
+                            <span class="filter-icon">🟡</span>
+                            <span>Medium</span>
+                        </a>
+                        <a href="?filter=low<%= statusFilter !== 'all' ? '&status=' + statusFilter : '' %><%= typeof sortBy !== 'undefined' ? '&sort=' + sortBy : '' %>" class="filter-btn <%= filter === 'low' ? 'active' : '' %>" aria-pressed="<%= filter === 'low' ? 'true' : 'false' %>">
+                            <span class="filter-icon">🔵</span>
+                            <span>Low</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <% if (typeof completedCount !== 'undefined' && completedCount > 0) { %>
+                <div class="clear-completed-wrapper">
+                    <button type="button" id="clearCompletedBtn" class="btn btn-clear-completed" aria-label="Clear all completed tasks">
+                        <span class="btn-icon">🗑️</span>
+                        <span class="btn-text">Clear Completed (<span id="completedCountForClear"><%= completedCount %></span>)</span>
+                    </button>
+                </div>
+            <% } %>
+        </section>
+
+        <!-- Todo List -->
+        <section class="todo-list-section" aria-label="Task list">
+            <div class="section-header">
+                <h2>
+                    <span class="section-icon">📝</span>
+                    Your Tasks
+                    <span class="task-count-badge" id="taskCountBadge" aria-live="polite">
+                        (<span id="taskCount"><%= todos.length %></span>)
+                    </span>
+                </h2>
+            </div>
+            <div id="todoList" class="todo-list" role="list" aria-label="List of tasks" data-search-empty="false">
+                <% if (todos.length === 0) { %>
+                    <div class="empty-state" role="status" aria-live="polite">
+                        <div class="empty-icon" aria-hidden="true">📝</div>
+                        <p class="empty-title">No tasks found</p>
+                        <p class="empty-message">
+                            <% if (typeof allTodos !== 'undefined' && allTodos.length === 0) { %>
+                                Add a new task to get started!
+                            <% } else { %>
+                                <% if (filter !== 'all' || statusFilter !== 'all') { %>
+                                    No tasks match your current filters.
+                                    <br>Try changing the filter or search to see all tasks.
+                                <% } else { %>
+                                    Your search didn't match any tasks.
+                                <% } %>
+                            <% } %>
+                        </p>
+                        <% if (typeof allTodos !== 'undefined' && allTodos.length > 0) { %>
+                            <button type="button" class="btn btn-secondary btn-reset-filters" onclick="window.location.href='/'">
+                                <span class="btn-icon">🔄</span>
+                                <span class="btn-text">Reset Filters</span>
+                            </button>
+                        <% } %>
+                    </div>
+                <% } else { %>
+                    <% todos.forEach((todo, index) => { %>
+                        <article class="todo-item priority-<%= todo.priority %> <%= todo.completed ? 'completed' : '' %> slide-in draggable" data-id="<%= todo.id %>" data-priority="<%= todo.priority %>" draggable="true" style="animation-delay: <%= index * 0.1 %>s; cursor: move;" role="listitem" aria-label="Task <%= index + 1 %>: <%= todo.task %>">
+                            <div class="todo-item-glow"></div>
+                            <div class="todo-checkbox-wrapper">
+                                <input type="checkbox" class="todo-checkbox" id="check-<%= todo.id %>" data-todo-id="<%= todo.id %>" <%= todo.completed ? 'checked' : '' %> aria-label="Mark task as complete">
+                                <label for="check-<%= todo.id %>" class="checkbox-label"></label>
+                            </div>
+                            <div class="todo-content">
+                                <span class="priority-badge priority-<%= todo.priority %> pulse-badge" aria-label="Priority: <%= todo.priority %>">
+                                    <span class="priority-icon" aria-hidden="true">
+                                        <% if (todo.priority === 'high') { %>🔴<% } %>
+                                        <% if (todo.priority === 'medium') { %>🟡<% } %>
+                                        <% if (todo.priority === 'low') { %>🔵<% } %>
+                                    </span>
+                                    <span class="priority-text"><%= todo.priority %></span>
+                                </span>
+                                <span class="todo-task" id="task-<%= todo.id %>"><%= todo.task %></span>
+                                <% if (todo.createdAt) { %>
+                                    <time class="todo-date" datetime="<%= todo.createdAt %>" title="Created: <%= new Date(todo.createdAt).toLocaleString() %>">
+                                        <span class="date-icon" aria-hidden="true">📅</span>
+                                        <%= new Date(todo.createdAt).toLocaleDateString() %>
+                                    </time>
+                                <% } %>
+                            </div>
+                            <div class="todo-actions" role="group" aria-label="Task actions">
+                                <button 
+                                    class="btn btn-edit" 
+                                    data-edit-id="<%= todo.id %>"
+                                    data-edit-task="<%= todo.task.replace(/"/g, '&quot;').replace(/\n/g, ' ') %>"
+                                    data-edit-priority="<%= todo.priority %>"
+                                    onclick="editTodoFromButton(this)"
+                                    aria-label="Edit task: <%= todo.task %>"
+                                    title="Edit this task"
+                                >
+                                    <span class="btn-icon" aria-hidden="true">✏️</span>
+                                    <span class="btn-text">Edit</span>
+                                </button>
+                                <button 
+                                    class="btn btn-delete" 
+                                    onclick="deleteTodo(<%= todo.id %>)"
+                                    aria-label="Delete this task"
+                                    title="Delete this task"
+                                >
+                                    <span class="btn-icon" aria-hidden="true">🗑️</span>
+                                    <span class="btn-text">Delete</span>
+                                </button>
+                            </div>
+                        </article>
+                    <% }); %>
+                <% } %>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer role="contentinfo">
+        <div class="container">
+            <p>
+                <span class="footer-icon" aria-hidden="true">✨</span>
+                &copy; 2024 Todo List App. Built with Express and EJS.
+            </p>
+        </div>
+    </footer>
+
+    <!-- Edit Modal -->
+    <div id="editModal" class="modal" role="dialog" aria-labelledby="editModalTitle" aria-hidden="true" aria-modal="true">
+        <div class="modal-content">
+            <button class="close" onclick="closeEditModal()" aria-label="Close dialog" type="button">
+                <span aria-hidden="true">&times;</span>
+            </button>
+            <div class="modal-header">
+                <h2 id="editModalTitle">
+                    <span class="modal-icon" aria-hidden="true">✏️</span>
+                    Edit Task
+                </h2>
+            </div>
+            <form id="editForm" novalidate>
+                <input type="hidden" id="editId" name="id">
+                <div class="input-group">
+                    <div class="input-wrapper">
+                        <input 
+                            type="text" 
+                            id="editTaskInput" 
+                            name="task" 
+                            placeholder="Enter your task here (max 200 characters)..." 
+                            maxlength="200"
+                            aria-label="Edit task input"
+                            aria-required="true"
+                            aria-describedby="editCharCount"
+                            required
+                            autocomplete="off"
+                        >
+                        <span class="char-count" id="editCharCount" role="status" aria-live="polite">0/200</span>
+                    </div>
+                    <div class="select-wrapper">
+                        <select 
+                            name="priority" 
+                            id="editPrioritySelect" 
+                            aria-label="Task priority"
+                            required
+                        >
+                            <option value="low">🔵 Low Priority</option>
+                            <option value="medium">🟡 Medium Priority</option>
+                            <option value="high">🔴 High Priority</option>
+                        </select>
+                    </div>
+                    <div class="modal-button-group">
+                    <button type="submit" class="btn btn-primary" id="updateBtn" aria-label="Update task">
+                        <span class="btn-icon" aria-hidden="true">💾</span>
+                        <span class="btn-text">Update Task</span>
+                        <span class="btn-loader" style="display: none;" aria-hidden="true">⏳</span>
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="closeEditModal()" aria-label="Cancel editing">
+                        <span class="btn-icon" aria-hidden="true">✖</span>
+                        <span class="btn-text">Cancel</span>
+                    </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmModal" class="modal" role="dialog" aria-labelledby="confirmModalTitle" aria-hidden="true" aria-modal="true">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="confirmModalTitle">
+                    <span class="modal-icon warning-icon" aria-hidden="true">⚠️</span>
+                    Confirm Delete
+                </h2>
+            </div>
+            <div class="modal-body">
+                <p id="confirmMessage">
+                    Are you sure you want to delete this task? 
+                    <strong>This action cannot be undone.</strong>
+                </p>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-danger" id="confirmDeleteBtn" aria-label="Confirm deletion">
+                    <span class="btn-icon" aria-hidden="true">🗑</span>
+                    <span class="btn-text">Yes, Delete</span>
+                </button>
+                <button class="btn btn-secondary" onclick="closeConfirmModal()" aria-label="Cancel deletion">
+                    <span class="btn-icon" aria-hidden="true">✖</span>
+                    <span class="btn-text">Cancel</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+# Netlify Configuration for Express Todo App
+# Note: Netlify is optimized for static sites and serverless functions.
+# For full Express apps with EJS templates, Render or Railway are better suited.
+# However, this configuration provides basic setup if you want to try Netlify.
+
+[build]
+  command = "npm install"
+  publish = "."
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "18"
+
+# Netlify doesn't natively support Express apps without serverless functions
+# This would require additional setup with Netlify Functions
+# Recommended: Use Render, Railway, or Vercel instead for Express apps
+
